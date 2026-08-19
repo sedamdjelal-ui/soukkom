@@ -56,14 +56,15 @@ export default async function Home() {
       <section className="max-w-6xl mx-auto px-4 py-12">
         <h3 className="text-2xl font-bold mb-8 text-center">منتجات مميزة</h3>
 
-        {products.length === 0 ? (
+                {products.length === 0 ? (
           <p className="text-center text-gray-500">لا توجد منتجات حالياً</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {products.map((product: any) => (
-              <div
+              <a
                 key={product._id}
-                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition"
+                href={`/products/${product._id}`}
+                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition block"
               >
                 {product.image && (
                   <img
@@ -76,7 +77,7 @@ export default async function Home() {
                   <h4 className="font-medium mb-1">{product.name}</h4>
                   <p className="text-teal-700 font-bold">{product.price} دج</p>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         )}
