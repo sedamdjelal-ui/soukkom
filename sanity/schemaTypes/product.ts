@@ -40,5 +40,12 @@ export default defineType({
       type: 'boolean',
       initialValue: true,
     }),
+    defineField({
+      name: 'merchant',
+      title: 'التاجر',
+      type: 'reference',
+      to: [{ type: 'merchant' }],
+      validation: (Rule) => Rule.required(),
+    }),
   ],
 })
