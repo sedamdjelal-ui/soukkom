@@ -2,69 +2,78 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [storeName, setStoreName] = useState('')
   const [city, setCity] = useState('')
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
   const [accepted, setAccepted] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError('')
 
     if (!accepted) {
-      alert('يجب الموافقة على شروط الاستخدام أولاً')
+      setError('يجب الموافقة على الشروط أولاً')
       return
     }
 
-    const message = `طلب تسجيل تاجر جديد في سوقكم:
+    setLoading(true)
 
-الاسم: ${name}
-الهاتف: ${phone}
-البريد: ${email || 'غير محدد'}
-اسم المتجر: ${storeName}
-المدينة: ${city}
-نوع المنتجات: ${category}
-وصف المتجر: ${description || 'لا يوجد'}`
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          phone,
+          storeName,
+          city,
+          category,
+          description,
+        }),
+      })
 
-    const whatsappNumber = '213668675851'
-    const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
-    setSent(true)
-  }
+      const data = await res.json()
 
-  if (sent) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="text-5xl mb-4">✅</div>
-        <h1 className="text-2xl font-bold mb-3">تم فتح واتساب</h1>
-        <p className="text-gray-600 mb-8">
-          أرسل الرسالة من واتساب ليصلك الرد قريباً.
-          سنتواصل معك بعد مراجعة طلبك.
-        </p>
-        <Link
-          href="/"
-          className="inline-block bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
-        >
-          العودة للرئيسية
-        </Link>
-      </div>
-    )
+      if (!res.ok) {
+        setError(data.error || 'حدث خطأ')
+        setLoading(false)
+        return
+      }
+
+      router.push('/dashboard')
+    } catch {
+      setError('حدث خطأ في الاتصال')
+      setLoading(false)
+    }
   }
 
   return (
     <div className="max-w-md mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-2 text-center">سجل كتاجر</h1>
+      <h1 className="text-3xl font-bold mb-2 text-center">إنشاء حساب تاجر</h1>
       <p className="text-gray-600 text-center mb-8">
-        انضم إلى سوقكم وابدأ بيع منتجاتك بسهولة
+        انضم إلى سوقكم وابدأ بيع منتجاتك
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
         <div>
           <label className="block text-sm mb-1">الاسم الكامل *</label>
           <input
@@ -73,7 +82,30 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
-            placeholder="أدخل اسمك"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">البريد الإلكتروني *</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">كلمة المرور *</label>
+          <input
+            type="password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
+            placeholder="6 أحرف على الأقل"
           />
         </div>
 
@@ -90,17 +122,6 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">البريد الإلكتروني</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
-            placeholder="example@email.com"
-          />
-        </div>
-
-        <div>
           <label className="block text-sm mb-1">اسم المتجر *</label>
           <input
             type="text"
@@ -108,7 +129,6 @@ export default function RegisterPage() {
             value={storeName}
             onChange={(e) => setStoreName(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
-            placeholder="اسم متجرك"
           />
         </div>
 
@@ -120,7 +140,6 @@ export default function RegisterPage() {
             value={city}
             onChange={(e) => setCity(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
-            placeholder="مثال: الجزائر، وهران، قسنطينة..."
           />
         </div>
 
@@ -149,7 +168,6 @@ export default function RegisterPage() {
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
-            placeholder="مثال: نبيع ملابس نسائية عصرية بأسعار مناسبة"
           />
         </div>
 
@@ -162,17 +180,25 @@ export default function RegisterPage() {
             className="mt-1"
           />
           <label htmlFor="terms" className="text-sm text-gray-600">
-            أوافق على شروط الاستخدام وأتعهد بصحة المعلومات المقدمة
+            أوافق على شروط الاستخدام وأتعهد بصحة المعلومات
           </label>
         </div>
 
         <button
           type="submit"
-          className="w-full bg-teal-700 text-white py-3 rounded-lg hover:bg-teal-800 transition mt-2"
+          disabled={loading}
+          className="w-full bg-teal-700 text-white py-3 rounded-lg hover:bg-teal-800 transition mt-2 disabled:opacity-50"
         >
-          إرسال الطلب عبر واتساب
+          {loading ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
         </button>
       </form>
+
+      <p className="text-center text-sm text-gray-600 mt-6">
+        لديك حساب؟{' '}
+        <Link href="/login" className="text-teal-700 hover:underline">
+          تسجيل الدخول
+        </Link>
+      </p>
     </div>
   )
 }
