@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const merchant = await client.fetch(
+    const merchant = await client.fetch(
     `*[_type == "merchant" && _id == $id][0]{
       approved,
       storeName,
