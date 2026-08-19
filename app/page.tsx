@@ -1,30 +1,18 @@
-export default function Home() {
-  const products = [
-    {
-      id: 1,
-      name: "ساعة يد أنيقة",
-      price: "4500 دج",
-      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop",
-    },
-    {
-      id: 2,
-      name: "سماعة بلوتوث",
-      price: "3200 دج",
-      image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
-    },
-    {
-      id: 3,
-      name: "حقيبة جلدية",
-      price: "7800 دج",
-      image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop",
-    },
-    {
-      id: 4,
-      name: "نظارة شمسية",
-      price: "2100 دج",
-      image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop",
-    },
-  ];
+import { client } from '@/sanity/lib/client'
+import { urlFor } from '@/sanity/lib/image'
+
+async function getProducts() {
+  const query = `*[_type == "product"] | order(_createdAt desc)[0...4] {
+    _id,
+    name,
+    price,
+    image
+  }`
+  return await client.fetch(query)
+}
+
+export default async function Home() {
+  const products = await getProducts()
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -33,9 +21,9 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-teal-700">سوقكم</h1>
           <nav className="flex gap-6 text-sm">
-            <a href="#" className="hover:text-teal-700">الرئيسية</a>
+            <a href="/" className="hover:text-teal-700">الرئيسية</a>
             <a href="/products" className="hover:text-teal-700">المنتجات</a>
-            <a href="#" className="hover:text-teal-700">سجل كتاجر</a>
+            <a href="/register" className="hover:text-teal-700">سجل كتاجر</a>
           </nav>
         </div>
       </header>
@@ -50,7 +38,7 @@ export default function Home() {
         </p>
         <div className="flex gap-4 justify-center">
           <a
-            href="#products"
+            href="/products"
             className="bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
           >
             تصفح المنتجات
@@ -65,27 +53,34 @@ export default function Home() {
       </main>
 
       {/* قسم المنتجات */}
-      <section id="products" className="max-w-6xl mx-auto px-4 py-12">
+      <section className="max-w-6xl mx-auto px-4 py-12">
         <h3 className="text-2xl font-bold mb-8 text-center">منتجات مميزة</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition"
-            >
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-4 text-center">
-                <h4 className="font-medium mb-1">{product.name}</h4>
-                <p className="text-teal-700 font-bold">{product.price}</p>
+
+        {products.length === 0 ? (
+          <p className="text-center text-gray-500">لا توجد منتجات حالياً</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {products.map((product: any) => (
+              <div
+                key={product._id}
+                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition"
+              >
+                {product.image && (
+                  <img
+                    src={urlFor(product.image).width(400).height(400).url()}
+                    alt={product.name}
+                    className="w-full h-48 object-cover"
+                  />
+                )}
+                <div className="p-4 text-center">
+                  <h4 className="font-medium mb-1">{product.name}</h4>
+                  <p className="text-teal-700 font-bold">{product.price} دج</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-              </section>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* الفوتر */}
       <footer className="border-t border-gray-200 mt-16">
@@ -93,7 +88,7 @@ export default function Home() {
           <p className="mb-2">© 2026 سوقكم — جميع الحقوق محفوظة</p>
           <p>منصة جزائرية للبيع والشراء</p>
         </div>
-            </footer>
+      </footer>
     </div>
-  );
+  )
 }
