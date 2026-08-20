@@ -33,9 +33,9 @@ async function uploadImage(base64: string) {
   })
 
   return {
-    _type: 'image',
+    _type: 'image' as const,
     asset: {
-      _type: 'reference',
+      _type: 'reference' as const,
       _ref: asset._id,
     },
   }
@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
 
     const slug = `${slugify(name)}-${Date.now().toString().slice(-4)}`
 
-    const doc: Record<string, unknown> = {
+    const image = imageBase64 ? await uploadImage(imageBase64) : null
+
+    const created = await client.create({
       _type: 'product',
       name,
       slug: { _type: 'slug', current: slug },
@@ -71,16 +73,8 @@ export async function POST(req: NextRequest) {
         _type: 'reference',
         _ref: session.id,
       },
-    }
-
-    if (imageBase64) {
-      const image = await uploadImage(imageBase64)
-      if (image) {
-        doc.image = image
-      }
-    }
-
-    const created = await client.create(doc)
+      ...(image ? { image } : {}),
+    })
 
     return NextResponse.json({ success: true, id: created._id })
   } catch (err: unknown) {
