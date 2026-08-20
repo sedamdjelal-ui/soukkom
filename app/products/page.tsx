@@ -49,7 +49,7 @@ export default async function ProductsPage() {
       {products.length === 0 ? (
         <p className="text-center text-gray-500 py-16">لا توجد منتجات حالياً</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {products.map((product) => (
             <Link
               key={product._id}
@@ -60,19 +60,19 @@ export default async function ProductsPage() {
                 <img
                   src={product.image.asset.url}
                   alt={product.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition duration-300"
+                  className="w-full aspect-square object-cover group-hover:scale-105 transition duration-300"
                 />
               ) : (
-                <div className="w-full h-48 bg-brand-bg flex items-center justify-center text-gray-400 text-sm">
+                <div className="w-full aspect-square bg-brand-bg flex items-center justify-center text-gray-400 text-xs">
                   بدون صورة
                 </div>
               )}
 
-              <div className="p-4">
-                <h2 className="font-medium text-lg mb-1 group-hover:text-brand-dark transition">
+              <div className="p-2 text-center">
+                <h2 className="font-medium text-sm truncate mb-0.5 group-hover:text-brand-dark transition">
                   {product.name}
                 </h2>
-                <p className="text-brand-dark font-bold">{product.price} دج</p>
+                <p className="text-brand-dark font-bold text-sm">{product.price} دج</p>
               </div>
             </Link>
           ))}
