@@ -20,6 +20,27 @@ function slugify(text: string) {
     .replace(/--+/g, '-')
 }
 
+async function uploadImage(base64: string) {
+  const match = base64.match(/^data:(.+);base64,(.+)$/)
+  if (!match) return null
+
+  const contentType = match[1]
+  const buffer = Buffer.from(match[2], 'base64')
+
+  const asset = await client.assets.upload('image', buffer, {
+    contentType,
+    filename: `product-${Date.now()}`,
+  })
+
+  return {
+    _type: 'image',
+    asset: {
+      _type: 'reference',
+      _ref: asset._id,
+    },
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) {
@@ -28,15 +49,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name, price, description, inStock } = body
+    const { name, price, description, inStock, imageBase64 } = body
 
     if (!name || price === undefined || price === null) {
-      return NextResponse.json({ error: 'الاسم والسعر مطلوبان' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'الاسم والسعر مطلوبان' },
+        { status: 400 }
+      )
     }
 
-    const slug = slugify(name)
+    const slug = `${slugify(name)}-${Date.now().toString().slice(-4)}`
 
-    const doc = await client.create({
+    const doc: Record<string, unknown> = {
       _type: 'product',
       name,
       slug: { _type: 'slug', current: slug },
@@ -47,9 +71,18 @@ export async function POST(req: NextRequest) {
         _type: 'reference',
         _ref: session.id,
       },
-    })
+    }
 
-    return NextResponse.json({ success: true, id: doc._id })
+    if (imageBase64) {
+      const image = await uploadImage(imageBase64)
+      if (image) {
+        doc.image = image
+      }
+    }
+
+    const created = await client.create(doc)
+
+    return NextResponse.json({ success: true, id: created._id })
   } catch (err: unknown) {
     console.error(err)
     const message = err instanceof Error ? err.message : 'فشل إنشاء المنتج'

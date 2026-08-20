@@ -1,35 +1,44 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function NewProductPage() {
+export default function EditProductPage() {
   const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
+
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [description, setDescription] = useState('')
   const [inStock, setInStock] = useState(true)
-  const [imageBase64, setImageBase64] = useState('')
-  const [preview, setPreview] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
 
-  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 4 * 1024 * 1024) {
-      setError('حجم الصورة يجب أن يكون أقل من 4 ميجا')
-      return
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(`/api/products/${id}`)
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error || 'تعذر تحميل المنتج')
+          setFetching(false)
+          return
+        }
+        setName(data.name || '')
+        setPrice(String(data.price ?? ''))
+        setDescription(data.description || '')
+        setInStock(data.inStock !== false)
+        setFetching(false)
+      } catch {
+        setError('حدث خطأ أثناء التحميل')
+        setFetching(false)
+      }
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      setImageBase64(result)
-      setPreview(result)
-    }
-    reader.readAsDataURL(file)
-  }
+    load()
+  }, [id])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -37,22 +46,21 @@ export default function NewProductPage() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
           price: Number(price),
           description,
           inStock,
-          imageBase64: imageBase64 || undefined,
         }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'فشل إضافة المنتج')
+        setError(data.error || 'فشل التعديل')
         setLoading(false)
         return
       }
@@ -65,29 +73,20 @@ export default function NewProductPage() {
     }
   }
 
+  if (fetching) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center text-gray-500">
+        جاري التحميل...
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-lg mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-2">إضافة منتج</h1>
-      <p className="text-gray-600 mb-8">أدخل بيانات المنتج الجديد</p>
+      <h1 className="text-3xl font-bold mb-2">تعديل المنتج</h1>
+      <p className="text-gray-600 mb-8">عدّل بيانات المنتج ثم احفظ</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">صورة المنتج</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImage}
-            className="w-full text-sm"
-          />
-          {preview && (
-            <img
-              src={preview}
-              alt="معاينة"
-              className="mt-3 w-full max-h-48 object-cover rounded-lg border"
-            />
-          )}
-        </div>
-
         <div>
           <label className="block text-sm font-medium mb-1">اسم المنتج</label>
           <input
@@ -142,7 +141,7 @@ export default function NewProductPage() {
           disabled={loading}
           className="w-full bg-teal-700 text-white py-3 rounded-lg font-medium hover:bg-teal-800 transition disabled:opacity-50"
         >
-          {loading ? 'جاري الحفظ...' : 'حفظ المنتج'}
+          {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
         </button>
       </form>
 

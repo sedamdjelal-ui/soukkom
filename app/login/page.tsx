@@ -81,7 +81,11 @@ export default function LoginPage() {
           {loading ? 'جاري الدخول...' : 'دخول'}
         </button>
       </form>
-
+<p className="mt-4 text-center text-sm">
+  <Link href="/forgot-password" className="text-teal-700 hover:underline">
+    نسيت كلمة المرور؟
+  </Link>
+</p>
       <p className="mt-6 text-center text-sm text-gray-600">
         ليس لديك حساب؟{' '}
         <Link href="/register" className="text-teal-700 hover:underline">

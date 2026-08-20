@@ -1,3 +1,4 @@
+import ProductActions from '@/app/components/ProductActions'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from 'next-sanity'
@@ -49,7 +50,7 @@ export default async function DashboardPage() {
     { merchantId: session.id }
   )
 
-  const approved = true
+  const approved = merchant?.approved === true
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
@@ -88,17 +89,24 @@ export default async function DashboardPage() {
 
         <div className="border rounded-lg p-6">
           <h2 className="font-bold mb-2">بيانات المتجر</h2>
-          <p className="text-sm text-gray-600">البريد: {merchant?.email || session.email}</p>
+          <p className="text-sm text-gray-600">
+            البريد: {merchant?.email || session.email}
+          </p>
           {merchant?.phone && (
             <p className="text-sm text-gray-600 mt-1">الهاتف: {merchant.phone}</p>
           )}
           {merchant?.city && (
             <p className="text-sm text-gray-600 mt-1">المدينة: {merchant.city}</p>
           )}
+          <Link
+            href="/dashboard/settings"
+            className="inline-block mt-3 text-teal-700 hover:underline text-sm"
+          >
+            إعدادات الحساب
+          </Link>
         </div>
       </div>
 
-      {/* قائمة المنتجات */}
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-gray-50 px-4 py-3 border-b font-medium">
           قائمة المنتجات
@@ -134,6 +142,10 @@ export default async function DashboardPage() {
                     )}
                   </p>
                 </div>
+                <ProductActions
+                  productId={product._id}
+                  productName={product.name}
+                />
               </li>
             ))}
           </ul>
