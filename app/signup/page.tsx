@@ -5,41 +5,57 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: { full_name: fullName },
+      },
     })
 
     setLoading(false)
 
     if (error) {
-      setError('البريد أو كلمة المرور غير صحيحة')
+      setError(error.message)
       return
     }
 
-    router.push('/')
-    router.refresh()
+    alert('تم إنشاء الحساب. تحقق من بريدك إن طُلب التأكيد.')
+    router.push('/login')
   }
 
   return (
     <div className="max-w-md mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold text-center mb-2">تسجيل الدخول</h1>
-      <p className="text-gray-600 text-center mb-8">مرحباً بعودتك إلى سوقكم</p>
+      <h1 className="text-3xl font-bold text-center mb-2">إنشاء حساب</h1>
+      <p className="text-gray-600 text-center mb-8">سجّل للشراء أو البيع على سوقكم</p>
 
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleSignup} className="space-y-4">
+        <div>
+          <label className="block text-sm mb-1">الاسم الكامل</label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            className="w-full border border-brand-muted rounded-lg px-4 py-2 focus:outline-none focus:border-brand-dark"
+            placeholder="اسمك"
+          />
+        </div>
+
         <div>
           <label className="block text-sm mb-1">البريد الإلكتروني</label>
           <input
@@ -59,8 +75,9 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={6}
             className="w-full border border-brand-muted rounded-lg px-4 py-2 focus:outline-none focus:border-brand-dark"
-            placeholder="كلمة المرور"
+            placeholder="6 أحرف على الأقل"
           />
         </div>
 
@@ -71,14 +88,14 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full bg-brand text-brand-dark py-3 rounded-lg font-medium hover:bg-brand-dark hover:text-white transition disabled:opacity-50"
         >
-          {loading ? 'جاري الدخول...' : 'دخول'}
+          {loading ? 'جاري التسجيل...' : 'إنشاء حساب'}
         </button>
       </form>
 
       <p className="text-center text-sm text-gray-600 mt-6">
-        ليس لديك حساب؟{' '}
-        <Link href="/signup" className="text-brand-dark underline">
-          إنشاء حساب
+        لديك حساب؟{' '}
+        <Link href="/login" className="text-brand-dark underline">
+          تسجيل الدخول
         </Link>
       </p>
     </div>

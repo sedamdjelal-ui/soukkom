@@ -13,15 +13,13 @@ export default defineType({
     }),
     defineField({
       name: 'customerName',
-      title: 'اسم الزبون',
+      title: 'اسم العميل',
       type: 'string',
-      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'phone',
-      title: 'رقم الهاتف',
+      title: 'الهاتف',
       type: 'string',
-      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'wilaya',
@@ -34,6 +32,11 @@ export default defineType({
       type: 'text',
     }),
     defineField({
+      name: 'notes',
+      title: 'ملاحظات',
+      type: 'text',
+    }),
+    defineField({
       name: 'items',
       title: 'المنتجات',
       type: 'array',
@@ -42,10 +45,13 @@ export default defineType({
           type: 'object',
           fields: [
             { name: 'productId', type: 'string', title: 'معرف المنتج' },
-            { name: 'name', type: 'string', title: 'اسم المنتج' },
+            { name: 'name', type: 'string', title: 'الاسم' },
             { name: 'price', type: 'number', title: 'السعر' },
             { name: 'quantity', type: 'number', title: 'الكمية' },
           ],
+          preview: {
+            select: { title: 'name', subtitle: 'quantity' },
+          },
         },
       ],
     }),
@@ -62,22 +68,25 @@ export default defineType({
         list: [
           { title: 'جديد', value: 'new' },
           { title: 'قيد المعالجة', value: 'processing' },
-          { title: 'تم التسليم', value: 'delivered' },
-          { title: 'ملغى', value: 'cancelled' },
+          { title: 'تم الشحن', value: 'shipped' },
+          { title: 'مكتمل', value: 'completed' },
+          { title: 'ملغي', value: 'cancelled' },
         ],
       },
       initialValue: 'new',
-    }),
-    defineField({
-      name: 'notes',
-      title: 'ملاحظات',
-      type: 'text',
     }),
   ],
   preview: {
     select: {
       title: 'customerName',
       subtitle: 'orderNumber',
+      status: 'status',
+    },
+    prepare({ title, subtitle, status }) {
+      return {
+        title: title || 'طلب بدون اسم',
+        subtitle: `${subtitle || ''} — ${status || ''}`,
+      }
     },
   },
 })

@@ -1,55 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { createClient } from 'next-sanity'
-
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
-  apiVersion: '2024-01-01',
-  useCdn: true,
-})
-
-type Product = {
-  _id: string
-  name: string
-  price: number
-  description?: string
-  inStock?: boolean
-  image?: {
-    asset?: {
-      url?: string
-    }
-  }
-  merchant?: {
-    storeName?: string
-    phone?: string
-  }
-}
-
-async function getProduct(param: string): Promise<Product | null> {
-  return client.fetch(
-    `*[
-      _type == "product" &&
-      (slug.current == $param || _id == $param)
-    ][0]{
-      _id,
-      name,
-      price,
-      description,
-      inStock,
-      image{
-        asset->{
-          url
-        }
-      },
-      merchant->{
-        storeName,
-        phone
-      }
-    }`,
-    { param }
-  )
-}
+import { createClient } from '@/lib/supabase/server'
+import AddToCartButton from '../../components/AddToCartButton'
+import StartChatButton from '@/app/components/StartChatButton'
 
 export default async function ProductPage({
   params,
@@ -57,7 +10,13 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const product = await getProduct(slug)
+  const supabase = await createClient()
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('id, name, slug, price, description, image_url, in_stock, merchant_id')
+    .eq('slug', slug)
+    .single()
 
   if (!product) {
     notFound()
@@ -67,16 +26,16 @@ export default async function ProductPage({
     <div className="max-w-4xl mx-auto px-4 py-16">
       <Link
         href="/products"
-        className="text-teal-700 hover:underline text-sm mb-8 inline-block"
+        className="text-sm text-teal-700 hover:underline mb-8 inline-block"
       >
         ← العودة للمنتجات
       </Link>
 
       <div className="grid md:grid-cols-2 gap-10">
         <div>
-          {product.image?.asset?.url ? (
+          {product.image_url ? (
             <img
-              src={product.image.asset.url}
+              src={product.image_url}
               alt={product.name}
               className="w-full rounded-xl object-cover"
             />
@@ -93,7 +52,7 @@ export default async function ProductPage({
             {product.price} دج
           </p>
 
-          {product.inStock === false && (
+          {product.in_stock === false && (
             <p className="text-red-600 text-sm mb-4">غير متوفر حالياً</p>
           )}
 
@@ -103,22 +62,20 @@ export default async function ProductPage({
             </p>
           )}
 
-          {product.merchant?.storeName && (
-            <p className="text-sm text-gray-500 mb-6">
-              المتجر: {product.merchant.storeName}
-            </p>
-          )}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <AddToCartButton
+              id={product.id}
+              name={product.name}
+              price={product.price}
+              image={product.image_url || undefined}
+              disabled={product.in_stock === false}
+            />
 
-          {product.merchant?.phone && (
-            <a
-              href={`https://wa.me/213${product.merchant.phone.replace(/^0/, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition"
-            >
-              تواصل عبر واتساب
-            </a>
-          )}
+            <StartChatButton
+              productId={product.id}
+              merchantUserId={product.merchant_id}
+            />
+          </div>
         </div>
       </div>
     </div>

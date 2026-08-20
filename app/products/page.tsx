@@ -1,78 +1,42 @@
 import Link from 'next/link'
-import { createClient } from 'next-sanity'
-
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
-  apiVersion: '2024-01-01',
-  useCdn: true,
-})
-
-type Product = {
-  _id: string
-  name: string
-  price: number
-  slug?: string
-  inStock?: boolean
-  image?: {
-    asset?: {
-      url?: string
-    }
-  }
-}
-
-async function getProducts(): Promise<Product[]> {
-  return client.fetch(
-    `*[_type == "product" && inStock != false] | order(_createdAt desc) {
-      _id,
-      name,
-      price,
-      "slug": slug.current,
-      inStock,
-      image{
-        asset->{
-          url
-        }
-      }
-    }`
-  )
-}
+import { createClient } from '@/lib/supabase/server'
 
 export default async function ProductsPage() {
-  const products = await getProducts()
+  const supabase = await createClient()
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, slug, price, image_url')
+    .order('created_at', { ascending: false })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-2 text-brand-dark">المنتجات</h1>
-      <p className="text-gray-600 mb-10">تصفح منتجات التجار على سوقكم</p>
+    <div className="max-w-6xl mx-auto px-4 py-12">
+      <h1 className="text-3xl font-bold mb-8 text-center">كل المنتجات</h1>
 
-      {products.length === 0 ? (
-        <p className="text-center text-gray-500 py-16">لا توجد منتجات حالياً</p>
+      {!products || products.length === 0 ? (
+        <p className="text-center text-gray-500">لا توجد منتجات حالياً</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {products.map((product) => (
             <Link
-              key={product._id}
-              href={product.slug ? `/products/${product.slug}` : '#'}
-              className="border border-brand-muted rounded-lg overflow-hidden hover:shadow-md transition group bg-white"
+              key={product.id}
+              href={`/products/${product.slug}`}
+              className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition block"
             >
-              {product.image?.asset?.url ? (
+              {product.image_url ? (
                 <img
-                  src={product.image.asset.url}
+                  src={product.image_url}
                   alt={product.name}
-                  className="w-full aspect-square object-cover group-hover:scale-105 transition duration-300"
+                  className="w-full h-48 object-cover"
                 />
               ) : (
-                <div className="w-full aspect-square bg-brand-bg flex items-center justify-center text-gray-400 text-xs">
+                <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                   بدون صورة
                 </div>
               )}
-
-              <div className="p-2 text-center">
-                <h2 className="font-medium text-sm truncate mb-0.5 group-hover:text-brand-dark transition">
-                  {product.name}
-                </h2>
-                <p className="text-brand-dark font-bold text-sm">{product.price} دج</p>
+              <div className="p-4 text-center">
+                <h4 className="font-medium mb-1">{product.name}</h4>
+                <p className="text-teal-700 font-bold">{product.price} دج</p>
               </div>
             </Link>
           ))}

@@ -1,175 +1,118 @@
-import ProductActions from '@/app/components/ProductActions'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { createClient } from 'next-sanity'
-import { getSession, destroySession } from '@/sanity/lib/auth'
+'use client'
 
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
-  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
-  apiVersion: '2024-01-01',
-  useCdn: false,
-})
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 type Product = {
-  _id: string
+  id: string
   name: string
   price: number
-  inStock?: boolean
-  slug?: string
+  image_url: string | null
+  in_stock: boolean
+  created_at: string
 }
 
-export default async function DashboardPage() {
-  const session = await getSession()
+export default function MyProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClient()
 
-  if (!session) {
-    redirect('/login')
+  useEffect(() => {
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, price, image_url, in_stock, created_at')
+        .eq('merchant_id', user.id)
+        .order('created_at', { ascending: false })
+
+      setProducts(data || [])
+      setLoading(false)
+    }
+
+    load()
+  }, [router, supabase])
+
+  async function handleDelete(id: string) {
+    if (!confirm('هل تريد حذف هذا المنتج؟')) return
+
+    await supabase.from('products').delete().eq('id', id)
+    setProducts((prev) => prev.filter((p) => p.id !== id))
   }
 
-  const merchant = await client.fetch(
-    `*[_type == "merchant" && (_id == $id || _id == $draftId)] | order(_updatedAt desc)[0]{
-      _id,
-      approved,
-      storeName,
-      email,
-      phone,
-      city,
-      category
-    }`,
-    { id: session.id, draftId: `drafts.${session.id}` }
-  )
-
-  const products: Product[] = await client.fetch(
-    `*[_type == "product" && merchant._ref == $merchantId] | order(_createdAt desc) {
-      _id,
-      name,
-      price,
-      inStock,
-      "slug": slug.current
-    }`,
-    { merchantId: session.id }
-  )
-
-  const approved = merchant?.approved === true
+  if (loading) {
+    return <div className="p-12 text-center">جاري التحميل...</div>
+  }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-2">لوحة التحكم</h1>
-      <p className="text-gray-600 mb-8">
-        مرحباً {session.name} — متجر: {session.storeName}
-      </p>
-
-      {approved ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8 text-sm text-green-800">
-          حسابك مفعّل. يمكنك إضافة المنتجات.
+    <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <Link href="/dashboard" className="text-sm text-teal-700 hover:underline mb-2 inline-block">
+            ← العودة للوحة التحكم
+          </Link>
+          <h1 className="text-2xl font-bold">منتجاتي</h1>
         </div>
+        <Link
+          href="/dashboard/products/new"
+          className="bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition text-sm"
+        >
+          + إضافة منتج
+        </Link>
+      </div>
+
+      {products.length === 0 ? (
+        <p className="text-center text-gray-500 py-12">
+          لا توجد منتجات بعد.{' '}
+          <Link href="/dashboard/products/new" className="text-teal-700 underline">
+            أضف أول منتج
+          </Link>
+        </p>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8 text-sm text-yellow-800">
-          حسابك قيد المراجعة. بعد الموافقة ستتمكن من إضافة المنتجات.
+        <div className="space-y-4">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="border border-gray-200 rounded-xl p-4 flex items-center gap-4"
+            >
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="w-16 h-16 object-cover rounded-lg"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">
+                  بدون صورة
+                </div>
+              )}
+
+              <div className="flex-1">
+                <h3 className="font-medium">{product.name}</h3>
+                <p className="text-teal-700 font-bold">{product.price} دج</p>
+              </div>
+
+              <button
+                onClick={() => handleDelete(product.id)}
+                className="text-red-600 text-sm hover:underline"
+              >
+                حذف
+              </button>
+            </div>
+          ))}
         </div>
       )}
-
-      <div className="grid gap-4 sm:grid-cols-2 mb-10">
-        <div className="border rounded-lg p-6">
-          <h2 className="font-bold mb-2">منتجاتي</h2>
-          <p className="text-gray-500 text-sm mb-4">
-            {products.length > 0
-              ? `لديك ${products.length} منتج`
-              : 'أضف منتجات متجرك للبيع'}
-          </p>
-          {approved && (
-            <Link
-              href="/dashboard/products/new"
-              className="inline-block bg-teal-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-teal-800 transition"
-            >
-              إضافة منتج
-            </Link>
-          )}
-        </div>
-
-        <div className="border rounded-lg p-6">
-          <h2 className="font-bold mb-2">بيانات المتجر</h2>
-          <p className="text-sm text-gray-600">
-            البريد: {merchant?.email || session.email}
-          </p>
-          {merchant?.phone && (
-            <p className="text-sm text-gray-600 mt-1">الهاتف: {merchant.phone}</p>
-          )}
-          {merchant?.city && (
-            <p className="text-sm text-gray-600 mt-1">المدينة: {merchant.city}</p>
-          )}
-          <Link
-            href="/dashboard/settings"
-            className="inline-block mt-3 text-teal-700 hover:underline text-sm"
-          >
-            إعدادات الحساب
-          </Link>
-        </div>
-      </div>
-
-      <div className="border rounded-lg overflow-hidden">
-        <div className="bg-gray-50 px-4 py-3 border-b font-medium">
-          قائمة المنتجات
-        </div>
-
-        {products.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm">
-            لا توجد منتجات بعد.
-            {approved && (
-              <div className="mt-3">
-                <Link
-                  href="/dashboard/products/new"
-                  className="text-teal-700 hover:underline"
-                >
-                  أضف أول منتج
-                </Link>
-              </div>
-            )}
-          </div>
-        ) : (
-          <ul className="divide-y">
-            {products.map((product) => (
-              <li
-                key={product._id}
-                className="px-4 py-3 flex items-center justify-between gap-4"
-              >
-                <div>
-                  <p className="font-medium">{product.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {product.price} دج
-                    {product.inStock === false && (
-                      <span className="text-red-600 mr-2"> — غير متوفر</span>
-                    )}
-                  </p>
-                </div>
-                <ProductActions
-                  productId={product._id}
-                  productName={product.name}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <form
-        action={async () => {
-          'use server'
-          await destroySession()
-          redirect('/login')
-        }}
-        className="mt-10"
-      >
-        <button type="submit" className="text-red-600 hover:underline text-sm">
-          تسجيل الخروج
-        </button>
-      </form>
-
-      <p className="mt-6">
-        <Link href="/" className="text-teal-700 hover:underline text-sm">
-          العودة للرئيسية
-        </Link>
-      </p>
     </div>
   )
 }

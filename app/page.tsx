@@ -1,77 +1,69 @@
-import { client } from '@/sanity/lib/client'
-import { urlFor } from '@/sanity/lib/image'
 import Link from 'next/link'
-
-async function getProducts() {
-  const query = `*[_type == "product"] | order(_createdAt desc)[0...8] {
-    _id,
-    name,
-    price,
-    "slug": slug.current,
-    image
-  }`
-  return await client.fetch(query)
-}
+import { createClient } from '@/lib/supabase/server'
 
 export default async function Home() {
-  const products = await getProducts()
+  const supabase = await createClient()
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, slug, price, image_url')
+    .order('created_at', { ascending: false })
+    .limit(4)
 
   return (
-    <div>
+    <div className="min-h-screen">
       {/* القسم الرئيسي */}
-      <section className="max-w-6xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-brand-dark">
+      <main className="max-w-6xl mx-auto px-4 py-16 text-center">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4">
           سوقكم... مكانك للبيع والشراء
-        </h1>
+        </h2>
         <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
           منصة جزائرية بسيطة تجمع التجار والزبائن في مكان واحد. ابدأ البيع أو التسوق بسهولة.
         </p>
         <div className="flex gap-4 justify-center">
           <Link
             href="/products"
-            className="bg-brand text-brand-dark px-6 py-3 rounded-lg hover:bg-brand-dark hover:text-white transition font-medium"
+            className="bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
           >
             تصفح المنتجات
           </Link>
           <Link
             href="/register"
-            className="border border-brand-dark text-brand-dark px-6 py-3 rounded-lg hover:bg-brand hover:border-brand transition font-medium"
+            className="border border-teal-700 text-teal-700 px-6 py-3 rounded-lg hover:bg-teal-50 transition"
           >
             سجل كتاجر
           </Link>
         </div>
-      </section>
+      </main>
 
-      {/* قسم المنتجات */}
+      {/* منتجات مميزة */}
       <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-bold mb-8 text-center text-brand-dark">
-          منتجات مميزة
-        </h2>
+        <h3 className="text-2xl font-bold mb-8 text-center">منتجات مميزة</h3>
 
-        {products.length === 0 ? (
+        {!products || products.length === 0 ? (
           <p className="text-center text-gray-500">لا توجد منتجات حالياً</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {products.map((product: any) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {products.map((product) => (
               <Link
-                key={product._id}
-                href={`/products/${product.slug || product._id}`}
-                className="border border-brand-muted rounded-lg overflow-hidden hover:shadow-md transition block bg-white"
+                key={product.id}
+                href={`/products/${product.slug}`}
+                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition block"
               >
-                {product.image ? (
+                {product.image_url ? (
                   <img
-                    src={urlFor(product.image).width(300).height(300).url()}
+                    src={product.image_url}
                     alt={product.name}
-                    className="w-full aspect-square object-cover"
+                    className="w-full h-48 object-cover"
                   />
                 ) : (
-                  <div className="w-full aspect-square bg-brand-bg flex items-center justify-center text-gray-400 text-xs">
+                  <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                     بدون صورة
                   </div>
                 )}
-                <div className="p-2 text-center">
-                  <h3 className="font-medium text-sm truncate mb-0.5">{product.name}</h3>
-                  <p className="text-brand-dark font-bold text-sm">{product.price} دج</p>
+                <div className="p-4 text-center">
+                  <h4 className="font-medium mb-1">{product.name}</h4>
+                  <p className="text-teal-700 font-bold">{product.price} دج</p>
                 </div>
               </Link>
             ))}
