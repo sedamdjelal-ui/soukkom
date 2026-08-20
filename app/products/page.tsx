@@ -43,7 +43,7 @@ export default async function ProductsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-16">
-      <h1 className="text-3xl font-bold mb-2">المنتجات</h1>
+      <h1 className="text-3xl font-bold mb-2 text-brand-dark">المنتجات</h1>
       <p className="text-gray-600 mb-10">تصفح منتجات التجار على سوقكم</p>
 
       {products.length === 0 ? (
@@ -54,7 +54,7 @@ export default async function ProductsPage() {
             <Link
               key={product._id}
               href={product.slug ? `/products/${product.slug}` : '#'}
-              className="border rounded-lg overflow-hidden hover:shadow-md transition group"
+              className="border border-brand-muted rounded-lg overflow-hidden hover:shadow-md transition group bg-white"
             >
               {product.image?.asset?.url ? (
                 <img
@@ -63,16 +63,16 @@ export default async function ProductsPage() {
                   className="w-full h-48 object-cover group-hover:scale-105 transition duration-300"
                 />
               ) : (
-                <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                <div className="w-full h-48 bg-brand-bg flex items-center justify-center text-gray-400 text-sm">
                   بدون صورة
                 </div>
               )}
 
               <div className="p-4">
-                <h2 className="font-medium text-lg mb-1 group-hover:text-teal-700 transition">
+                <h2 className="font-medium text-lg mb-1 group-hover:text-brand-dark transition">
                   {product.name}
                 </h2>
-                <p className="text-teal-700 font-bold">{product.price} دج</p>
+                <p className="text-brand-dark font-bold">{product.price} دج</p>
               </div>
             </Link>
           ))}

@@ -7,6 +7,7 @@ async function getProducts() {
     _id,
     name,
     price,
+    "slug": slug.current,
     image
   }`
   return await client.fetch(query)
@@ -19,7 +20,7 @@ export default async function Home() {
     <div>
       {/* القسم الرئيسي */}
       <section className="max-w-6xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-brand-dark">
           سوقكم... مكانك للبيع والشراء
         </h1>
         <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
@@ -28,13 +29,13 @@ export default async function Home() {
         <div className="flex gap-4 justify-center">
           <Link
             href="/products"
-            className="bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
+            className="bg-brand text-brand-dark px-6 py-3 rounded-lg hover:bg-brand-dark hover:text-white transition font-medium"
           >
             تصفح المنتجات
           </Link>
           <Link
             href="/register"
-            className="border border-teal-700 text-teal-700 px-6 py-3 rounded-lg hover:bg-teal-50 transition"
+            className="border border-brand-dark text-brand-dark px-6 py-3 rounded-lg hover:bg-brand hover:border-brand transition font-medium"
           >
             سجل كتاجر
           </Link>
@@ -43,7 +44,9 @@ export default async function Home() {
 
       {/* قسم المنتجات */}
       <section className="max-w-6xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-bold mb-8 text-center">منتجات مميزة</h2>
+        <h2 className="text-2xl font-bold mb-8 text-center text-brand-dark">
+          منتجات مميزة
+        </h2>
 
         {products.length === 0 ? (
           <p className="text-center text-gray-500">لا توجد منتجات حالياً</p>
@@ -52,8 +55,8 @@ export default async function Home() {
             {products.map((product: any) => (
               <Link
                 key={product._id}
-                href={`/products/${product._id}`}
-                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition block"
+                href={`/products/${product.slug || product._id}`}
+                className="border border-brand-muted rounded-xl overflow-hidden hover:shadow-md transition block bg-white"
               >
                 {product.image && (
                   <img
@@ -64,7 +67,7 @@ export default async function Home() {
                 )}
                 <div className="p-4 text-center">
                   <h3 className="font-medium mb-1">{product.name}</h3>
-                  <p className="text-teal-700 font-bold">{product.price} دج</p>
+                  <p className="text-brand-dark font-bold">{product.price} دج</p>
                 </div>
               </Link>
             ))}
