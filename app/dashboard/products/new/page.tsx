@@ -12,7 +12,7 @@ export default function NewProductPage() {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   const [description, setDescription] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
+  const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -38,6 +38,30 @@ export default function NewProductPage() {
       return
     }
 
+    let imageUrl: string | null = null
+
+    // رفع الصورة إن وُجدت
+    if (file) {
+      const ext = file.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, file)
+
+      if (uploadError) {
+        setLoading(false)
+        setError('فشل رفع الصورة: ' + uploadError.message)
+        return
+      }
+
+      const { data: publicUrl } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName)
+
+      imageUrl = publicUrl.publicUrl
+    }
+
     const slug = makeSlug(name) + '-' + Date.now().toString().slice(-4)
 
     const { error: insertError } = await supabase.from('products').insert({
@@ -46,7 +70,7 @@ export default function NewProductPage() {
       slug,
       price: Number(price),
       description: description.trim() || null,
-      image_url: imageUrl.trim() || null,
+      image_url: imageUrl,
       in_stock: true,
     })
 
@@ -106,13 +130,12 @@ export default function NewProductPage() {
         </div>
 
         <div>
-          <label className="block text-sm mb-1">رابط الصورة (اختياري)</label>
+          <label className="block text-sm mb-1">صورة المنتج</label>
           <input
-            type="url"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
-            placeholder="https://..."
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-teal-50 file:text-teal-700"
           />
         </div>
 
