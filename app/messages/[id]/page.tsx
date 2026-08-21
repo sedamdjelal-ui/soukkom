@@ -1,24 +1,28 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
-type Conversation = {
+type Message = {
   id: string
+  content: string
+  sender_id: string
   created_at: string
-  product_id: string | null
-  buyer_id: string
-  seller_id: string
 }
 
-export default function MessagesPage() {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
+export default function ChatPage() {
+  const params = useParams()
+  const conversationId = params.id as string
   const router = useRouter()
   const supabase = createClient()
+
+  const [messages, setMessages] = useState<Message[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function load() {
@@ -34,48 +38,125 @@ export default function MessagesPage() {
       setUserId(user.id)
 
       const { data } = await supabase
-        .from('conversations')
-        .select('id, created_at, product_id, buyer_id, seller_id')
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
+        .from('messages')
+        .select('id, content, sender_id, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
 
-      setConversations(data || [])
+      setMessages(data || [])
       setLoading(false)
     }
 
     load()
-  }, [router, supabase])
+  }, [conversationId, router, supabase])
+
+  // الاستماع للرسائل الجديدة فورياً
+  useEffect(() => {
+    if (!conversationId) return
+
+    const channel = supabase
+      .channel(`messages:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as Message
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev
+            return [...prev, newMsg]
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [conversationId, supabase])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  async function sendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newMessage.trim() || !userId) return
+
+    const content = newMessage.trim()
+    setNewMessage('')
+
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: userId,
+      content,
+    })
+
+    if (error) {
+      alert('خطأ: ' + error.message)
+    }
+  }
 
   if (loading) {
     return <div className="p-12 text-center">جاري التحميل...</div>
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-12">
-      <h1 className="text-2xl font-bold mb-6">محادثاتي</h1>
+    <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col h-[80vh]">
+      <Link
+        href="/messages"
+        className="text-sm text-teal-700 hover:underline mb-4 inline-block"
+      >
+        ← كل المحادثات
+      </Link>
 
-      {conversations.length === 0 ? (
-        <p className="text-center text-gray-500 py-12">
-          لا توجد محادثات بعد.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {conversations.map((c) => (
-            <Link
-              key={c.id}
-              href={`/messages/${c.id}`}
-              className="block border border-gray-200 rounded-xl p-4 hover:shadow-md transition"
+      <div className="flex-1 overflow-y-auto border border-gray-200 rounded-xl p-4 space-y-3 mb-4 bg-white">
+        {messages.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-8">
+            لا توجد رسائل بعد. ابدأ المحادثة.
+          </p>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${
+                msg.sender_id === userId ? 'justify-start' : 'justify-end'
+              }`}
             >
-              <p className="font-medium">
-                {c.buyer_id === userId ? 'محادثة مع البائع' : 'محادثة مع مشتري'}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {new Date(c.created_at).toLocaleDateString('ar-DZ')}
-              </p>
-            </Link>
-          ))}
-        </div>
-      )}
+              <div
+                className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm ${
+                  msg.sender_id === userId
+                    ? 'bg-teal-700 text-white rounded-br-sm'
+                    : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <form onSubmit={sendMessage} className="flex gap-2">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="اكتب رسالتك..."
+          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-700"
+        />
+        <button
+          type="submit"
+          className="bg-teal-700 text-white px-5 py-2 rounded-lg hover:bg-teal-800 transition"
+        >
+          إرسال
+        </button>
+      </form>
     </div>
   )
 }

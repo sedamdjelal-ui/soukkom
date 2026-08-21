@@ -9,14 +9,22 @@ export default async function ProductPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
+
   const supabase = await createClient()
 
-  const { data: product } = await supabase
+  const { data: product, error } = await supabase
     .from('products')
-    .select('id, name, slug, price, description, image_url, in_stock, merchant_id')
+    .select(
+      'id, name, slug, price, description, image_url, in_stock, merchant_id'
+    )
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
+
+  if (error) {
+    console.error('Product query error:', error.message)
+  }
 
   if (!product) {
     notFound()
@@ -62,7 +70,19 @@ export default async function ProductPage({
             </p>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          {product.merchant_id && (
+            <div className="mb-6 p-4 border border-gray-200 rounded-xl bg-gray-50">
+              <p className="text-sm text-gray-500 mb-1">البائع</p>
+              <Link
+                href={`/merchant/${product.merchant_id}`}
+                className="text-teal-700 font-medium hover:underline"
+              >
+                عرض متجر التاجر ←
+              </Link>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <AddToCartButton
               id={product.id}
               name={product.name}
@@ -71,10 +91,12 @@ export default async function ProductPage({
               disabled={product.in_stock === false}
             />
 
-            <StartChatButton
-              productId={product.id}
-              merchantUserId={product.merchant_id}
-            />
+            {product.merchant_id && (
+              <StartChatButton
+                productId={product.id}
+                merchantUserId={product.merchant_id}
+              />
+            )}
           </div>
         </div>
       </div>
