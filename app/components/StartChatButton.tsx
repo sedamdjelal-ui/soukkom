@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 type Props = {
   productId: string
-  merchantUserId?: string
+  merchantUserId: string
 }
 
 export default function StartChatButton({ productId, merchantUserId }: Props) {
@@ -14,12 +14,7 @@ export default function StartChatButton({ productId, merchantUserId }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
-  async function handleStart() {
-    if (!merchantUserId) {
-      alert('البائع ليس لديه حساب رسائل بعد. استخدم واتساب.')
-      return
-    }
-
+  async function handleClick() {
     setLoading(true)
 
     const {
@@ -31,44 +26,52 @@ export default function StartChatButton({ productId, merchantUserId }: Props) {
       return
     }
 
+    // لا يرسل رسالة لنفسه
+    if (user.id === merchantUserId) {
+      alert('لا يمكنك مراسلة نفسك')
+      setLoading(false)
+      return
+    }
+
+    // البحث عن محادثة موجودة أو إنشاء جديدة
     const { data: existing } = await supabase
       .from('conversations')
       .select('id')
-      .eq('buyer_id', user.id)
-      .eq('merchant_id', merchantUserId)
       .eq('product_id', productId)
+      .eq('buyer_id', user.id)
+      .eq('seller_id', merchantUserId)
       .maybeSingle()
 
-    if (existing) {
-      router.push(`/messages/${existing.id}`)
-      return
+    let conversationId = existing?.id
+
+    if (!conversationId) {
+      const { data: created, error } = await supabase
+        .from('conversations')
+        .insert({
+          product_id: productId,
+          buyer_id: user.id,
+          seller_id: merchantUserId,
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        alert('حدث خطأ: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      conversationId = created.id
     }
 
-    const { data: created, error } = await supabase
-      .from('conversations')
-      .insert({
-        buyer_id: user.id,
-        merchant_id: merchantUserId,
-        product_id: productId,
-      })
-      .select('id')
-      .single()
-
-    setLoading(false)
-
-    if (error || !created) {
-      alert('تعذر بدء المحادثة')
-      return
-    }
-
-    router.push(`/messages/${created.id}`)
+    router.push(`/messages/${conversationId}`)
   }
 
   return (
     <button
-      onClick={handleStart}
+      onClick={handleClick}
       disabled={loading}
-      className="inline-block text-center border border-teal-700 text-teal-700 px-6 py-3 rounded-lg hover:bg-teal-50 transition disabled:opacity-50"
+      className="border border-teal-700 text-teal-700 px-6 py-3 rounded-lg hover:bg-teal-50 transition disabled:opacity-50"
     >
       {loading ? 'جاري الفتح...' : 'راسل البائع'}
     </button>
